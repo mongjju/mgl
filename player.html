@@ -1,69 +1,309 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>밸런스 게임</title>
 <style>
-body { font-family:sans-serif; text-align:center; padding:30px; }
-button { font-size:20px; padding:15px 25px; margin:8px; border:none; border-radius:10px; background:#e0e0e0; }
-.selected { background:#4CAF50; color:white; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+}
+.container {
+  background: white;
+  border-radius: 24px;
+  padding: 32px 24px;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  text-align: center;
+}
+h1 {
+  font-size: 28px;
+  margin-bottom: 8px;
+  color: #333;
+}
+.subtitle {
+  color: #888;
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.name-input {
+  width: 100%;
+  padding: 14px 16px;
+  border: 2px solid #e0e0e0;
+  border-radius: 12px;
+  font-size: 16px;
+  outline: none;
+  transition: border-color 0.3s;
+  margin-bottom: 16px;
+}
+.name-input:focus { border-color: #667eea; }
+.start-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  border: none;
+  border-radius: 12px;
+  font-size: 18px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.start-btn:active { transform: scale(0.97); }
+
+/* 문제 화면 */
+.question-screen { display: none; }
+.progress {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.progress-dot {
+  width: 12px; height: 12px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  transition: background 0.3s;
+}
+.progress-dot.active { background: #667eea; }
+.progress-dot.done { background: #4CAF50; }
+
+.q-number {
+  font-size: 48px;
+  color: #667eea;
+  font-weight: 800;
+  margin-bottom: 24px;
+}
+
+.choices {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+  margin-bottom: 24px;
+}
+.choice-btn {
+  width: 120px; height: 120px;
+  border: 3px solid #e0e0e0;
+  border-radius: 24px;
+  background: white;
+  font-size: 36px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.25s;
+  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.choice-btn:active { transform: scale(0.95); }
+.choice-btn.selected-a {
+  border-color: #FF6B6B;
+  background: #FFF0F0;
+  color: #FF6B6B;
+  box-shadow: 0 4px 20px rgba(255,107,107,0.3);
+}
+.choice-btn.selected-b {
+  border-color: #4DABF7;
+  background: #F0F7FF;
+  color: #4DABF7;
+  box-shadow: 0 4px 20px rgba(77,171,247,0.3);
+}
+.choice-label { display: none; }
+
+.submit-btn {
+  width: 100%;
+  padding: 14px;
+  background: #e0e0e0;
+  color: #999;
+  border: none;
+  border-radius: 12px;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: not-allowed;
+  transition: all 0.3s;
+}
+.submit-btn.ready {
+  background: linear-gradient(135deg, #667eea, #764ba2);
+  color: white;
+  cursor: pointer;
+}
+.submit-btn.ready:active { transform: scale(0.97); }
+
+/* 완료 화면 */
+.done-screen {
+  display: none;
+  text-align: center;
+}
+.done-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+.done-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 8px;
+}
+.done-sub {
+  color: #888;
+  font-size: 15px;
+}
+
+/* 애니메이션 */
+.fade-in {
+  animation: fadeIn 0.4s ease;
+}
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 </style>
 </head>
 <body>
 
-<h2>밸런스 게임</h2>
-<input id="name" placeholder="이름 입력"><br><br>
+<div class="container">
+  <!-- 이름 입력 화면 -->
+  <div id="name-screen" class="fade-in">
+    <h1>밸런스 게임</h1>
+    <p class="subtitle">이름을 입력하고 시작하세요!</p>
+    <input id="name" class="name-input" placeholder="이름 입력" maxlength="10">
+    <button class="start-btn" onclick="startGame()">시작하기</button>
+  </div>
 
-<div id="question-container">
-  <h3 id="q-title">1번 문제</h3>
-  <button id="a-btn" onclick="select(0,this)">A</button>
-  <button id="b-btn" onclick="select(1,this)">B</button><br><br>
-  <button onclick="submitAnswer()">제출</button>
+  <!-- 문제 화면 -->
+  <div id="question-screen" class="question-screen">
+    <div class="progress" id="progress"></div>
+    <div class="q-number" id="q-number"></div>
+    <div class="choices">
+      <button class="choice-btn" id="choice-a" onclick="selectChoice(0)">
+        <span class="choice-label">A</span>
+      </button>
+      <button class="choice-btn" id="choice-b" onclick="selectChoice(1)">
+        <span class="choice-label">B</span>
+      </button>
+    </div>
+    <button class="submit-btn" id="submit-btn" onclick="submitAnswer()">제출</button>
+  </div>
+
+  <!-- 완료 화면 -->
+  <div id="done-screen" class="done-screen">
+    <div class="done-icon">&#127881;</div>
+    <div class="done-title">제출 완료!</div>
+    <p class="done-sub">결과는 관리자 화면에서 확인하세요.</p>
+  </div>
 </div>
 
 <script>
-const questions = [
-  {num:1, points:[0,1]}, 
-  {num:2, points:[0,1]}, 
-  {num:3, points:[0,2]}
+// ========== 문제 설정 ==========
+// 여기서 질문과 선택지, 점수를 수정하세요
+const QUESTIONS = [
+  { scoreA: 0, scoreB: 1 },
+  { scoreA: 0, scoreB: 1 },
+  { scoreA: 0, scoreB: 2 }
 ];
 
-let current = 0;
-let answers = [];
-let name = "";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwUcvq_2q8oXf8Dur3dMXw2eyA0Z6qtZRgfMfEWOPllcFZklDMGR6RLVywiTsLESoG8/exec";
 
-function select(val, btn){
-  document.getElementById("a-btn").classList.remove("selected");
-  document.getElementById("b-btn").classList.remove("selected");
-  btn.classList.add("selected");
-  answers[current] = val;
+let currentQ = 0;
+let selected = -1;
+let playerName = "";
+
+function startGame() {
+  playerName = document.getElementById("name").value.trim();
+  if (!playerName) { alert("이름을 입력해주세요."); return; }
+
+  document.getElementById("name-screen").style.display = "none";
+  document.getElementById("question-screen").style.display = "block";
+  document.getElementById("question-screen").classList.add("fade-in");
+
+  // 진행 도트 생성
+  const prog = document.getElementById("progress");
+  prog.innerHTML = "";
+  QUESTIONS.forEach((_, i) => {
+    const dot = document.createElement("div");
+    dot.className = "progress-dot" + (i === 0 ? " active" : "");
+    dot.id = "dot-" + i;
+    prog.appendChild(dot);
+  });
+
+  showQuestion();
 }
 
-function submitAnswer(){
-  name = document.getElementById("name").value.trim();
-  if(!name){ alert("이름을 입력해주세요."); return; }
-  if(answers[current]===undefined){ alert("선택을 해주세요."); return; }
+function showQuestion() {
+  document.getElementById("q-number").textContent = `Q${currentQ + 1}`;
 
-  // Web App에 제출
-  fetch("https://script.google.com/macros/s/AKfycbzrVJH8GR6OC_7uLburlL4XfAvLhFvCkXea3MkaKcy8GSzZB_UGtXjMhftTep4HUqV3/exec", {
-    method:"POST",
-    headers:{"Content-Type":"application/x-www-form-urlencoded"},
-    body:`name=${encodeURIComponent(name)}&q=${current+1}&score=${answers[current]}`
-  }).then(res=>res.text())
-    .then(()=> {
-      current++;
-      if(current<questions.length){
-        // 다음 문제 표시
-        document.getElementById("q-title").innerText = `${questions[current].num}번 문제`;
-        document.getElementById("a-btn").classList.remove("selected");
-        document.getElementById("b-btn").classList.remove("selected");
-      }else{
-        alert("모든 문제 제출 완료!");
-        document.getElementById("question-container").innerHTML = "<h3>제출 완료!</h3>";
-      }
-    }).catch(()=> alert("서버와 연결 실패"));
+  // 선택 초기화
+  selected = -1;
+  document.getElementById("choice-a").className = "choice-btn";
+  document.getElementById("choice-b").className = "choice-btn";
+  document.getElementById("submit-btn").className = "submit-btn";
+
+  // 진행 도트 업데이트
+  QUESTIONS.forEach((_, i) => {
+    const dot = document.getElementById("dot-" + i);
+    dot.className = "progress-dot";
+    if (i < currentQ) dot.classList.add("done");
+    else if (i === currentQ) dot.classList.add("active");
+  });
 }
+
+function selectChoice(val) {
+  selected = val;
+  const a = document.getElementById("choice-a");
+  const b = document.getElementById("choice-b");
+  a.className = "choice-btn" + (val === 0 ? " selected-a" : "");
+  b.className = "choice-btn" + (val === 1 ? " selected-b" : "");
+  document.getElementById("submit-btn").className = "submit-btn ready";
+}
+
+function submitAnswer() {
+  if (selected === -1) return;
+
+  const q = QUESTIONS[currentQ];
+  const score = selected === 0 ? q.scoreA : q.scoreB;
+  const btn = document.getElementById("submit-btn");
+  btn.textContent = "전송 중...";
+  btn.className = "submit-btn";
+
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `name=${encodeURIComponent(playerName)}&q=${currentQ + 1}&score=${score}&choice=${selected}`
+  })
+  .then(res => res.text())
+  .then(() => {
+    currentQ++;
+    if (currentQ < QUESTIONS.length) {
+      document.getElementById("question-screen").classList.remove("fade-in");
+      void document.getElementById("question-screen").offsetWidth;
+      document.getElementById("question-screen").classList.add("fade-in");
+      btn.textContent = "제출";
+      showQuestion();
+    } else {
+      document.getElementById("question-screen").style.display = "none";
+      document.getElementById("done-screen").style.display = "block";
+      document.getElementById("done-screen").classList.add("fade-in");
+    }
+  })
+  .catch(() => {
+    alert("서버 연결에 실패했습니다. 다시 시도해주세요.");
+    btn.textContent = "제출";
+    btn.className = "submit-btn ready";
+  });
+}
+
+// 엔터키로 시작
+document.getElementById("name").addEventListener("keydown", e => {
+  if (e.key === "Enter") startGame();
+});
 </script>
 </body>
 </html>
