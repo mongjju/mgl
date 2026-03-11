@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>밸런스 게임 관리자</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body { font-family:sans-serif; padding:20px; }
+.chart-container { width:300px; margin:20px auto; }
+table { width:80%; margin:auto; border-collapse:collapse; }
+th, td { border:1px solid #ccc; padding:8px; text-align:center; }
+</style>
+</head>
+<body>
+
+<h2>관리자 화면</h2>
+
+<div class="chart-container"><canvas id="q1Chart"></canvas></div>
+<div class="chart-container"><canvas id="q2Chart"></canvas></div>
+<div class="chart-container"><canvas id="q3Chart"></canvas></div>
+
+<h3>참가자 점수</h3>
+<table id="scoreTable">
+  <thead><tr><th>이름</th><th>Q1</th><th>Q2</th><th>Q3</th><th>총점</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script>
+const WEB_APP_URL="https://script.google.com/macros/s/AKfycbxa1G7eeZwrxuxd5V4hLYoTB7O6dDkh0XvSnmRuaZNX93S0jHUlqYUpDA-CjNbfjOCn/exec";
+let qCharts=[];
+
+function initCharts(){
+  ["q1Chart","q2Chart","q3Chart"].forEach((id,i)=>{
+    const ctx=document.getElementById(id).getContext("2d");
+    qCharts[i]=new Chart(ctx,{type:'pie',data:{labels:['A','B'],datasets:[{data:[0,0],backgroundColor:['#4CAF50','#2196F3']}]}})
+  });
+}
+
+function updateData(){
+  fetch(WEB_APP_URL)
+    .then(res=>res.json())
+    .then(data=>{
+      const tbody=document.querySelector("#scoreTable tbody");
+      tbody.innerHTML="";
+      let scores={}; // 이름별 누적
+      let qCount=[[0,0],[0,0],[0,0]]; // 문제별 A/B
+      data.slice(1).forEach(r=>{
+        const name=r[0], q=r[1], score=r[2];
+        if(!scores[name]) scores[name]=[0,0,0];
+        scores[name][q-1]=score;
+        qCount[q-1][score>0?1:0]++; // 0/점수>0
+      });
+      for(let name in scores){
+        const [q1,q2,q3]=scores[name];
+        const total=q1+q2+q3;
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td>${name}</td><td>${q1}</td><td>${q2}</td><td>${q3}</td><td>${total}</td>`;
+        tbody.appendChild(tr);
+      }
+      // 점수 내림차순 정렬
+      Array.from(tbody.children)
+        .sort((a,b)=> b.children[4].innerText - a.children[4].innerText)
+        .forEach(tr=>tbody.appendChild(tr));
+
+      qCharts.forEach((chart,i)=>{ chart.data.datasets[0].data=qCount[i]; chart.update(); });
+    });
+}
+
+initCharts();
+updateData();
+setInterval(updateData,3000);
+</script>
+</body>
+</html>
