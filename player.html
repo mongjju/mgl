@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>밸런스 게임</title>
+<style>
+body {
+  font-family: sans-serif;
+  text-align: center;
+  padding: 30px;
+  font-size: 20px;
+}
+button {
+  font-size: 20px;
+  padding: 15px 25px;
+  margin: 8px;
+  border: none;
+  border-radius: 10px;
+  background: #e0e0e0;
+}
+.selected {
+  background: #4CAF50;
+  color: white;
+}
+</style>
+</head>
+<body>
+
+<h2>밸런스 게임</h2>
+
+<form id="gameForm" action="https://script.google.com/macros/s/AKfycbwxb3JEBM89DCRiw5YddIcSbCEo69e6Ec4rorN9XOAbrPjfkQXNBf98G6HBo_5wFwAD/exec" method="POST" target="_blank">
+  <input type="text" name="name" placeholder="이름 입력" required><br><br>
+
+  <h3>1번 문제</h3>
+  <button type="button" id="q1a" onclick="selectQ1(0,this)">A</button>
+  <button type="button" id="q1b" onclick="selectQ1(1,this)">B</button>
+  <input type="hidden" name="q1" id="formQ1" value="0">
+
+  <h3>2번 문제</h3>
+  <button type="button" id="q2a" onclick="selectQ2(0,this)">A</button>
+  <button type="button" id="q2b" onclick="selectQ2(1,this)">B</button>
+  <input type="hidden" name="q2" id="formQ2" value="0">
+
+  <h3>3번 문제</h3>
+  <button type="button" id="q3a" onclick="selectQ3(0,this)">A</button>
+  <button type="button" id="q3b" onclick="selectQ3(2,this)">B</button>
+  <input type="hidden" name="q3" id="formQ3" value="0">
+
+  <br><br>
+  <button type="submit">제출</button>
+</form>
+
+<script>
+function clearButtons(prefix) {
+  document.querySelectorAll(prefix + " button").forEach(b=>b.classList.remove("selected"));
+}
+
+function selectQ1(val, btn) {
+  document.getElementById("q1a").classList.remove("selected");
+  document.getElementById("q1b").classList.remove("selected");
+  btn.classList.add("selected");
+  document.getElementById("formQ1").value = val;
+}
+
+function selectQ2(val, btn) {
+  document.getElementById("q2a").classList.remove("selected");
+  document.getElementById("q2b").classList.remove("selected");
+  btn.classList.add("selected");
+  document.getElementById("formQ2").value = val;
+}
+
+function selectQ3(val, btn) {
+  document.getElementById("q3a").classList.remove("selected");
+  document.getElementById("q3b").classList.remove("selected");
+  btn.classList.add("selected");
+  document.getElementById("formQ3").value = val;
+}
+</script>
+
+</body>
+</html>
