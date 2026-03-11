@@ -46,7 +46,7 @@ function submitAnswer(){
   if(answers[current]===undefined){ alert("선택을 해주세요."); return; }
 
   // Web App에 제출
-  fetch("https://script.google.com/macros/s/AKfycbxa1G7eeZwrxuxd5V4hLYoTB7O6dDkh0XvSnmRuaZNX93S0jHUlqYUpDA-CjNbfjOCn/exec", {
+  fetch("https://script.google.com/macros/s/AKfycbzrVJH8GR6OC_7uLburlL4XfAvLhFvCkXea3MkaKcy8GSzZB_UGtXjMhftTep4HUqV3/exec", {
     method:"POST",
     headers:{"Content-Type":"application/x-www-form-urlencoded"},
     body:`name=${encodeURIComponent(name)}&q=${current+1}&score=${answers[current]}`
