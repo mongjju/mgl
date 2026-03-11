@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>밸런스 게임 - 관리자</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body {
@@ -214,10 +214,11 @@ h1 {
   <span class="live-dot"></span>실시간 업데이트 중 &nbsp;|&nbsp;
   참가자 <span class="count" id="player-count">0</span>명
 </p>
+<p id="header-error" style="text-align:center;color:red;font-size:13px;margin-bottom:16px;"></p>
 
 <!-- QR 코드 -->
 <div class="qr-section">
-  <canvas id="qrcode"></canvas>
+  <div id="qrcode" style="display:inline-block;"></div>
   <div class="qr-url">플레이어 접속 URL: <a id="player-url" href="#" target="_blank"></a></div>
 </div>
 
@@ -267,10 +268,12 @@ let charts = [];
 
 // QR 코드 생성
 function generateQR() {
-  QRCode.toCanvas(document.getElementById("qrcode"), PLAYER_URL, {
+  new QRCode(document.getElementById("qrcode"), {
+    text: PLAYER_URL,
     width: 200,
-    margin: 2,
-    color: { dark: "#333", light: "#fff" }
+    height: 200,
+    colorDark: "#333",
+    colorLight: "#fff"
   });
   const urlEl = document.getElementById("player-url");
   urlEl.href = PLAYER_URL;
@@ -334,9 +337,13 @@ function initCharts() {
 
 // 데이터 업데이트
 function updateData() {
-  fetch(WEB_APP_URL + "?t=" + Date.now(), { cache: "no-store" })
-    .then(res => res.json())
+  fetch(WEB_APP_URL + "?t=" + Date.now(), { redirect: "follow" })
+    .then(res => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
     .then(data => {
+      console.log("받은 데이터:", data);
       const rows = data.slice(1); // 헤더 제외
       const scores = {};
       const qCount = QUESTIONS.map(() => [0, 0]); // [A선택수, B선택수]
@@ -392,7 +399,10 @@ function updateData() {
         </tr>`;
       }).join("");
     })
-    .catch(err => console.error("데이터 로드 실패:", err));
+    .catch(err => {
+      console.error("데이터 로드 실패:", err);
+      document.getElementById("header-error").textContent = "데이터 로드 실패: " + err.message;
+    });
 }
 
 // 데이터 초기화
