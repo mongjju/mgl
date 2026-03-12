@@ -152,6 +152,12 @@ h1 {
   color: #333;
   margin-bottom: 8px;
 }
+.done-score {
+  font-size: 48px;
+  font-weight: 800;
+  color: #667eea;
+  margin: 16px 0;
+}
 .done-sub {
   color: #888;
   font-size: 15px;
@@ -193,6 +199,7 @@ h1 {
   <div id="done-screen" class="done-screen">
     <div class="done-icon">&#127881;</div>
     <div class="done-title">제출 완료!</div>
+    <div class="done-score" id="done-score"></div>
     <p class="done-sub">결과는 관리자 화면에서 확인하세요.</p>
   </div>
 </div>
@@ -203,14 +210,17 @@ h1 {
 const QUESTIONS = [
   { scoreA: 0, scoreB: 1 },
   { scoreA: 0, scoreB: 1 },
-  { scoreA: 0, scoreB: 2 }
+  { scoreA: 0, scoreB: 1 },
+  { scoreA: 0, scoreB: 1 },
+  { scoreA: 0, scoreB: 1 }
 ];
 
-const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbwUcvq_2q8oXf8Dur3dMXw2eyA0Z6qtZRgfMfEWOPllcFZklDMGR6RLVywiTsLESoG8/exec";
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycby3RNUG-GAPxAVrYE5tFPY0n252_DKZnTKvvD-2ir3FR9oWgCf6GU3RJW0do1-0Ir1S/exec";
 
 let currentQ = 0;
 let selected = -1;
 let playerName = "";
+let totalScore = 0;
 
 function startGame() {
   playerName = document.getElementById("name").value.trim();
@@ -276,6 +286,7 @@ function submitAnswer() {
   })
   .then(res => res.text())
   .then(() => {
+    totalScore += score;
     currentQ++;
     if (currentQ < QUESTIONS.length) {
       document.getElementById("question-screen").classList.remove("fade-in");
@@ -285,6 +296,7 @@ function submitAnswer() {
       showQuestion();
     } else {
       document.getElementById("question-screen").style.display = "none";
+      document.getElementById("done-score").textContent = totalScore + " / " + QUESTIONS.length + "점";
       document.getElementById("done-screen").style.display = "block";
       document.getElementById("done-screen").classList.add("fade-in");
     }
