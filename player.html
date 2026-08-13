@@ -81,6 +81,17 @@ h1 { font-size: 26px; margin-bottom: 8px; color: #333; }
   margin-bottom: 8px;
   text-align: center;
 }
+.q-points {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 2px 9px;
+  background: #f5f3ff;
+  color: #764ba2;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  vertical-align: middle;
+}
 .q-text {
   font-size: 19px;
   font-weight: 700;
@@ -271,7 +282,8 @@ function showQuestion() {
 
   document.getElementById("progress-bar").style.width = Math.round((currentQ / QUESTIONS.length) * 100) + "%";
   document.getElementById("progress-text").textContent = `${currentQ + 1} / ${QUESTIONS.length}`;
-  document.getElementById("q-number").textContent = `Q${currentQ + 1}`;
+  const pointsLabel = q.points % 1 === 0 ? q.points : q.points.toFixed(1);
+  document.getElementById("q-number").innerHTML = `Q${currentQ + 1}<span class="q-points">${pointsLabel}점</span>`;
   const displayText = q.text.replace(/^\d+\.\s*/, "");
   document.getElementById("q-text").innerHTML = displayText.split("\n").join("<br>");
 
@@ -335,45 +347,51 @@ function gradeCurrent() {
   return { isCorrect, answerRecord, score: isCorrect ? q.points : 0 };
 }
 
+// 서버 전송은 백그라운드에서 처리 (Apps Script 응답을 기다리지 않고 바로 다음 문제로 넘어감)
+// 실패 시 한 번 조용히 재시도하고, 그래도 실패하면 실패 목록에 쌓아둠(콘솔 확인용)
+const failedSubmits = [];
+function sendAnswer(qNum, score, answerRecord, isCorrect, isRetry) {
+  const body = `name=${encodeURIComponent(playerName)}&q=${qNum}&score=${score}&choice=${encodeURIComponent(answerRecord)}&correct=${isCorrect ? 1 : 0}`;
+  fetch(WEB_APP_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body
+  }).catch(() => {
+    if (!isRetry) {
+      setTimeout(() => sendAnswer(qNum, score, answerRecord, isCorrect, true), 1500);
+    } else {
+      failedSubmits.push({ qNum, score, answerRecord, isCorrect });
+      console.warn("제출 실패(재시도 후에도):", qNum);
+    }
+  });
+}
+
 function submitAnswer() {
   const q = QUESTIONS[currentQ];
   if (q.type === "mc" && selected === -1) return;
   if (q.type !== "mc" && !document.getElementById("text-answer").value.trim()) return;
 
   const { isCorrect, answerRecord, score } = gradeCurrent();
-  const btn = document.getElementById("submit-btn");
-  btn.textContent = "전송 중...";
-  btn.className = "submit-btn";
 
-  fetch(WEB_APP_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/x-www-form-urlencoded" },
-    body: `name=${encodeURIComponent(playerName)}&q=${currentQ + 1}&score=${score}&choice=${encodeURIComponent(answerRecord)}&correct=${isCorrect ? 1 : 0}`
-  })
-  .then(res => res.text())
-  .then(() => {
-    totalScore += score;
-    if (isCorrect) correctCount++;
-    currentQ++;
-    if (currentQ < QUESTIONS.length) {
-      document.getElementById("question-screen").classList.remove("fade-in");
-      void document.getElementById("question-screen").offsetWidth;
-      document.getElementById("question-screen").classList.add("fade-in");
-      showQuestion();
-    } else {
-      document.getElementById("progress-bar").style.width = "100%";
-      document.getElementById("question-screen").style.display = "none";
-      document.getElementById("done-score").textContent = totalScore + " / " + TOTAL_POINTS + "점";
-      document.getElementById("done-correct").textContent = correctCount + " / " + QUESTIONS.length + "문제 정답";
-      document.getElementById("done-screen").style.display = "block";
-      document.getElementById("done-screen").classList.add("fade-in");
-    }
-  })
-  .catch(() => {
-    alert("서버 연결에 실패했습니다. 다시 시도해주세요.");
-    btn.textContent = "제출";
-    btn.className = "submit-btn ready";
-  });
+  // 응답을 기다리지 않고 바로 전송 시작 (백그라운드)
+  sendAnswer(currentQ + 1, score, answerRecord, isCorrect);
+
+  totalScore += score;
+  if (isCorrect) correctCount++;
+  currentQ++;
+  if (currentQ < QUESTIONS.length) {
+    document.getElementById("question-screen").classList.remove("fade-in");
+    void document.getElementById("question-screen").offsetWidth;
+    document.getElementById("question-screen").classList.add("fade-in");
+    showQuestion();
+  } else {
+    document.getElementById("progress-bar").style.width = "100%";
+    document.getElementById("question-screen").style.display = "none";
+    document.getElementById("done-score").textContent = totalScore + " / " + TOTAL_POINTS + "점";
+    document.getElementById("done-correct").textContent = correctCount + " / " + QUESTIONS.length + "문제 정답";
+    document.getElementById("done-screen").style.display = "block";
+    document.getElementById("done-screen").classList.add("fade-in");
+  }
 }
 
 // 엔터키로 시작 / 제출
