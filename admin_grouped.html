@@ -328,7 +328,8 @@ function updateData() {
             // 점수 자체는 실제 퀴즈 점수 범위(0~TOTAL_POINTS) 안에서만 선택합니다.
             const candidates = [];
 
-            for (let score = 0; score <= TOTAL_POINTS; score++) {
+            const maxScore = QUESTIONS.length * 10;
+            for (let score = 0; score <= maxScore; score++) {
               const candidate = {
                 name: "박윤진",
                 total: score,
