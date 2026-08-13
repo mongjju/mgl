@@ -118,7 +118,7 @@ h1 { text-align: center; font-size: 32px; margin-bottom: 8px; }
 // ========== 문제 설정 (player.html과 반드시 동일하게 맞추세요) ==========
 const QUESTIONS = [
   { type: "mc", text: "리터놀의 설립일자는?", options: ["24.7.7", "24.6.7", "23.7.7", "23.6.7"], correct: 2, points: 2 },
-  { type: "mc", text: "윤대건의 MBTI는?", options: ["INTP", "ISTJ", "ISFJ", "INTJ"], correct: 0, points: 2 },
+  { type: "text", text: "이번 문제는 경상도 사투리 듣기 문제입니다. 박윤진의 발음을 듣고 a, b, c 를 순서대로 작성해주세요. (주관식) / a. '결혼식 사회자'의 사회, b. '사회 생활'의 사회, c. 4회", accepted: ["b, a, c"], points: 2 },
   { type: "mc", text: "다음중 우리 검품원의 이름이 아닌 것은?", options: ["최학림", "구경은", "김미영", "김태윤"], correct: 2, points: 4.5 },
   { type: "number", text: "다음 문제의 답은? (주관식) 9-3÷⅓-1", correctValue: -1, points: 0.5 },
   { type: "mc", text: "다음중 나이가 가장 많은 사람은?", options: ["김문규", "김상훈", "옥창안", "정재희"], correct: 3, points: 2 },
@@ -202,7 +202,9 @@ function updateData() {
       return res.json();
     })
     .then(data => {
-      const rows = data.slice(1); // 헤더 제외: name, q, score, choice, correct, timestamp
+      // 헤더: name, Q1_choice, Q1_score, Q1_correct, Q2_choice, ..., total, correct_count, updated_at
+      // (참가자 한 명당 한 행. Code.gs의 QUESTION_COUNT와 QUESTIONS.length가 반드시 같아야 함)
+      const rows = data.slice(1);
       const scores = {}; // name -> { total, correctCount }
       const qStats = QUESTIONS.map(q => q.type === "mc"
         ? { optionCounts: new Array(q.options.length).fill(0), total: 0 }
@@ -210,25 +212,30 @@ function updateData() {
 
       rows.forEach(r => {
         const name = r[0];
-        const q = Number(r[1]);
-        const score = Number(r[2]);
-        const choice = r[3];
-        const isCorrect = String(r[4]) === "1" || String(r[4]).toLowerCase() === "true";
-        if (!name || !q || q < 1 || q > QUESTIONS.length) return;
+        if (!name) return;
 
-        if (!scores[name]) scores[name] = { total: 0, correctCount: 0 };
-        scores[name].total += score;
-        if (isCorrect) scores[name].correctCount++;
+        QUESTIONS.forEach((qDef, i) => {
+          const base = 1 + i * 3; // 0-indexed: choice, score, correct
+          const choice = r[base];
+          if (choice === "" || choice === undefined || choice === null) return; // 아직 이 문제를 안 푼 경우 통계 제외
+          const correctFlag = r[base + 2];
+          const isCorrect = correctFlag === 1 || correctFlag === "1";
 
-        const qDef = QUESTIONS[q - 1];
-        const stat = qStats[q - 1];
-        stat.total++;
-        if (qDef.type === "mc") {
-          const idx = qDef.options.indexOf(choice);
-          if (idx >= 0) stat.optionCounts[idx]++;
-        } else {
-          if (isCorrect) stat.correct++; else stat.wrong++;
-        }
+          const stat = qStats[i];
+          stat.total++;
+          if (qDef.type === "mc") {
+            const idx = qDef.options.indexOf(choice);
+            if (idx >= 0) stat.optionCounts[idx]++;
+          } else {
+            if (isCorrect) stat.correct++; else stat.wrong++;
+          }
+        });
+
+        const totalCol = 1 + QUESTIONS.length * 3; // 0-indexed position of "total"
+        scores[name] = {
+          total: Number(r[totalCol]) || 0,
+          correctCount: Number(r[totalCol + 1]) || 0
+        };
       });
 
       // 문제별 통계 렌더링
