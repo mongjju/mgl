@@ -183,8 +183,9 @@ function initCharts() {
         </div>`;
     }
 
+    const pointsLabel = q.points % 1 === 0 ? q.points : q.points.toFixed(1);
     card.innerHTML = `
-      <div class="chart-title">Q${i + 1}</div>
+      <div class="chart-title">Q${i + 1} · ${pointsLabel}점</div>
       <div class="chart-q">${q.text}</div>
       <div class="chart-answer">정답: ${answerLabel}</div>
       ${bodyHtml}
