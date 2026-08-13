@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>8월 타운홀 퀴즈 - 관리자</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Apple SD Gothic Neo', 'Noto Sans KR', sans-serif;
+  background: #f5f5f5;
+  color: #333;
+  padding: 24px;
+}
+h1 { text-align: center; font-size: 32px; margin-bottom: 8px; }
+.header-sub { text-align: center; color: #888; font-size: 14px; margin-bottom: 32px; }
+.header-sub .count { color: #667eea; font-weight: 700; }
+
+.qr-section { text-align: center; margin-bottom: 40px; }
+.qr-section canvas { border: 4px solid white; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.1); }
+.qr-url { margin-top: 12px; font-size: 13px; color: #888; word-break: break-all; }
+.qr-url a { color: #667eea; text-decoration: none; }
+
+/* 문제별 통계 */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 20px;
+  max-width: 1200px;
+  margin: 0 auto 40px;
+}
+.chart-card { background: white; border-radius: 20px; padding: 22px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.chart-title { font-size: 13px; color: #667eea; font-weight: 700; margin-bottom: 4px; }
+.chart-q { font-size: 15px; font-weight: 700; margin-bottom: 6px; line-height: 1.35; min-height: 40px; }
+.chart-answer { font-size: 12px; color: #4CAF50; font-weight: 700; margin-bottom: 14px; }
+.opt-row { margin-bottom: 8px; }
+.opt-row-head { display: flex; justify-content: space-between; font-size: 12.5px; margin-bottom: 3px; color: #666; }
+.opt-row-head .label { font-weight: 600; }
+.opt-row-head .label.correct { color: #4CAF50; }
+.opt-bar-bg { width: 100%; height: 10px; background: #f0f0f0; border-radius: 5px; overflow: hidden; }
+.opt-bar-fill { height: 100%; border-radius: 5px; background: #b8c0f0; transition: width 0.3s; }
+.opt-bar-fill.correct { background: #4CAF50; }
+.acc-summary { margin-top: 10px; font-size: 13px; color: #888; text-align: right; }
+.acc-summary .pct { font-weight: 800; color: #667eea; }
+
+/* 점수 테이블 */
+.score-section { max-width: 700px; margin: 0 auto; }
+.score-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.score-header h2 { font-size: 24px; }
+.score-header .badge { background: #667eea; color: white; padding: 4px 12px; border-radius: 20px; font-size: 13px; font-weight: 700; }
+.score-table { width: 100%; border-collapse: separate; border-spacing: 0; background: white; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 16px rgba(0,0,0,0.06); }
+.score-table thead th { background: #667eea; color: white; padding: 14px 16px; font-size: 14px; font-weight: 700; text-align: center; }
+.score-table thead th:first-child { text-align: left; padding-left: 20px; }
+.score-table tbody td { padding: 12px 16px; text-align: center; border-bottom: 1px solid #f0f0f0; font-size: 15px; }
+.score-table tbody td:first-child { text-align: left; padding-left: 20px; font-weight: 600; }
+.score-table tbody tr:last-child td { border-bottom: none; }
+.score-table tbody tr:hover { background: #f8f8ff; }
+.rank { display: inline-flex; width: 28px; height: 28px; border-radius: 50%; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; margin-right: 8px; }
+.rank-1 { background: #FFD700; color: #7a6200; }
+.rank-2 { background: #C0C0C0; color: #555; }
+.rank-3 { background: #CD7F32; color: #fff; }
+.rank-n { background: #f0f0f0; color: #888; }
+.total-score { font-weight: 700; font-size: 18px; color: #667eea; }
+.score-table tbody td:last-child { font-weight: 700; color: #764ba2; }
+.no-data { text-align: center; padding: 40px; color: #bbb; font-size: 15px; }
+
+.reset-section { text-align: center; margin-top: 40px; }
+.reset-btn { padding: 10px 24px; background: #ff5252; color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 700; cursor: pointer; opacity: 0.7; transition: opacity 0.2s; }
+.reset-btn:hover { opacity: 1; }
+
+.live-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4CAF50; margin-right: 6px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.3; } }
+</style>
+</head>
+<body>
+
+<h1>8월 타운홀 퀴즈</h1>
+<p class="header-sub">
+  <span class="live-dot"></span>실시간 업데이트 중 &nbsp;|&nbsp;
+  참가자 <span class="count" id="player-count">0</span>명
+</p>
+<p id="header-error" style="text-align:center;color:red;font-size:13px;margin-bottom:16px;"></p>
+
+<!-- QR 코드 -->
+<div class="qr-section">
+  <div id="qrcode" style="display:inline-block;"></div>
+  <div class="qr-url">플레이어 접속 URL: <a id="player-url" href="#" target="_blank"></a></div>
+</div>
+
+<!-- 문제별 통계 -->
+<div class="charts-grid" id="charts-grid"></div>
+
+<!-- 점수 테이블 -->
+<div class="score-section">
+  <div class="score-header">
+    <h2>참가자 순위</h2>
+    <span class="badge" id="score-badge">0명</span>
+  </div>
+  <p style="text-align:center;color:#888;font-size:12px;margin:-6px 0 12px;">
+    박윤진의 점수만 조 편성 목적으로 자동 보정됩니다. 실제 제출 데이터는 변경되지 않습니다.
+  </p>
+  <table class="score-table">
+    <thead>
+      <tr>
+        <th>참가자</th>
+        <th>정답 수</th>
+        <th>총점</th>
+        <th>조</th>
+      </tr>
+    </thead>
+    <tbody id="score-tbody">
+      <tr><td colspan="3" class="no-data">아직 제출된 데이터가 없습니다</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<div class="reset-section">
+  <button class="reset-btn" onclick="if(confirm('모든 데이터를 삭제할까요?')) resetData()">데이터 초기화</button>
+</div>
+
+<script>
+// ========== 문제 설정 (player.html과 반드시 동일하게 맞추세요) ==========
+const QUESTIONS = [
+  { type: "mc", text: "리터놀의 설립일자는?", options: ["24.7.7", "24.6.7", "23.7.7", "23.6.7"], correct: 2, points: 1 },
+  { type: "text", text: "이번 문제는 경상도 사투리 듣기 문제입니다. 박윤진의 발음을 듣고 a, b, c 를 순서대로 작성해주세요. (주관식) / a. '결혼식 사회자'의 사회, b. '사회 생활'의 사회, c. 4회", accepted: ["b, a, c"], points: 2 },
+  { type: "mc", text: "다음중 우리 검품원의 이름이 아닌 것은?", options: ["최학림", "구경은", "김미영", "김태윤"], correct: 2, points: 2 },
+  { type: "number", text: "다음 문제의 답은? (주관식) 9-3÷⅓-1", correctValue: -1, points: 1 },
+  { type: "mc", text: "다음중 나이가 가장 많은 사람은?", options: ["옥창안", "김문규", "김상훈", "김수영"], correct: 2, points: 2 },
+  { type: "mc", text: "리터놀의 사업자 번호는?", options: ["632-88-03012", "855-86-03125", "855-88-03012", "632-87-03125"], correct: 3, points: 3 },
+  { type: "mc", text: "다음중 생일이 가장 빠른사람은?", options: ["조재성", "김은솔", "주요한", "김유림"], correct: 0, points: 2 },
+  { type: "mc", text: "다음 네사람을 입사일 느린 순으로 나열하시오", options: ["최태준-김상훈-김유림-조재성", "김상훈-최태준-조재성-김유림", "조재성-김유림-최태준-김상훈", "김유림-조재성-김상훈-최태준"], correct: 1, points: 3 },
+  { type: "mc", text: "대한민국의 광복절은?", options: ["1940.8.15", "1935.8.15", "1945.8.15", "1942.8.15"], correct: 2, points: 1 },
+  { type: "mc", text: "김유림의 최애 음식은?", options: ["닭발", "곱창", "마라탕", "훠궈"], correct: 3, points: 2 },
+  { type: "mc", text: "다음중 우리 고객사(또는 브랜드)가 아닌곳은?", options: ["낼나", "브랜드웍스", "안다르", "컴포트랩"], correct: 2, points: 2 },
+  { type: "mc", text: "우리의 월급날은?", options: ["15일", "20일", "24일", "25일"], correct: 3, points: 1 },
+  { type: "mc", text: "다음중 리터놀의 3대 핵심가치에 포함되지 않는 것은?", options: ["정직", "정보공유", "선의경쟁", "WIN-WIN"], correct: 2, points: 2 },
+  { type: "text", text: "리터놀의 미션을 영어로 적으시오", accepted: ["RETURN ALL TO THEIR OWN PURPOSE"], points: 3 },
+  { type: "mc", text: "주요한이 즐겨하는 운동은?", options: ["크로스핏", "헬스", "프사오", "플라잉요가"], correct: 2, points: 2 },
+  { type: "text", text: "“분좋카”는 무슨 뜻인가요?", accepted: ["분위기 좋은 카페"], keywords: ["분위기", "좋은", "카페"], points: 2 },
+  { type: "text", text: "“나같경”은 무슨 뜻인가요?", accepted: ["나 같은 경우에는"], keywords: ["나", "같은", "경우"], points: 3 },
+  { type: "mc", text: "브랜드명과 브랜드 ID의 매칭이 잘못된 것은?", options: ["이터널 그룹 - ETN", "브론슨 - BRS", "바이젝 - BYZ", "오끼뜨 - OGT"], correct: 2, points: 3 },
+  { type: "mc", text: "우리나라 국보 1호는 무엇인가요?", options: ["한글", "숭례문", "경복궁", "석굴암"], correct: 1, points: 1 },
+  { type: "mc", text: "리터놀 본사의 주소는?", options: ["서울특별시 마포구 백범로 21길 31", "대전광역시 유성구 전민로 74", "경기도 군포시 당정로 69", "대전광역시 유성구 대학로 179", "서울특별시 마포구 백범로 31길 21", "경기도 군포시 번영로 82-7"], correct: 1, points: 2 },
+  { type: "mc", text: "리터놀의 법인등록번호는?", options: ["160111-0665655", "134111-0665650", "160111-0665715", "134111-0665655"], correct: 2, points: 5 },
+  { type: "mc", text: "소윤님의 취미 운동은?", options: ["킥복싱", "주짓수", "테니스", "태권도"], correct: 1, points: 2 },
+  { type: "mc", text: "은솔님이 키우는 고양이 이름은?", options: ["흑당이", "소금이", "시오", "먼지"], correct: 2, points: 2 },
+  { type: "mc", text: "하윤님의 장발은 몇 년 되었을까?", options: ["2년", "5년", "7년", "10년이상"], correct: 3, points: 3 },
+  { type: "mc", text: "재성님은 서울-부산을 자전거로 여행한 적이 있다", options: ["O", "X"], correct: 0, points: 2 },
+  { type: "mc", text: "다음 중, 상훈님을 괴롭히는 방법은?", options: ["칭찬해달라고 조르기", "하기싫은일 해달라고 조르기", "제일 맛있는거 골라달라고 조르기", "밥사달라고 조르기"], correct: 2, points: 2 },
+  { type: "mc", text: "박윤진의 퇴사 사유는?", options: ["옥창안의 직장내 괴롭힘과 무관심", "윤대건의 독단적인 급여 삭감", "김유림의 원치않는 스킨쉽과 포교활동", "진로 변경"], correct: 3, points: 2 },
+  { type: "mc", text: "태준님의 본가는?", options: ["고성", "속초", "강릉", "원주"], correct: 2, points: 2 },
+  { type: "mc", text: "구성원의 MBTI 매칭이 틀린 것은?", options: ["윤대건 - INTP", "최준호 - INTJ", "이윤형 - ENFJ", "신지영 - ISFJ"], correct: 1, points: 2 },
+  { type: "mc", text: "경석님이 가장 자신 있어하는 베이킹은?", options: ["깜빠뉴", "바게트", "크랙쿠키", "치즈케이크"], correct: 0, points: 2 }
+];
+
+// Code.gs 배포 후 발급되는 웹앱 URL (player.html과 동일한 URL이어야 합니다)
+const WEB_APP_URL = "https://script.google.com/macros/s/AKfycbz90jyqfVCD7pUuJJ7RAOyR1DaWl7WrJA5b2PD86DSCVVDWQsbgxzAoIPdn6SlcWVcXfQ/exec";
+
+// player.html의 고정 URL - 본인의 GitHub Pages URL로 수정하세요
+const PLAYER_URL = "https://mongjju.github.io/mgl/player.html";
+
+function generateQR() {
+  new QRCode(document.getElementById("qrcode"), {
+    text: PLAYER_URL,
+    width: 200,
+    height: 200,
+    colorDark: "#333",
+    colorLight: "#fff"
+  });
+  const urlEl = document.getElementById("player-url");
+  urlEl.href = PLAYER_URL;
+  urlEl.textContent = PLAYER_URL;
+}
+
+function initCharts() {
+  const grid = document.getElementById("charts-grid");
+  QUESTIONS.forEach((q, i) => {
+    const card = document.createElement("div");
+    card.className = "chart-card";
+    let answerLabel = "";
+    if (q.type === "mc") answerLabel = q.options[q.correct];
+    else if (q.type === "number") answerLabel = String(q.correctValue);
+    else answerLabel = q.accepted[0];
+
+    let bodyHtml = "";
+    if (q.type === "mc") {
+      bodyHtml = `<div id="opts-${i}"></div>`;
+    } else {
+      bodyHtml = `
+        <div class="opt-row">
+          <div class="opt-row-head"><span class="label correct">정답</span><span id="correct-pct-${i}">0%</span></div>
+          <div class="opt-bar-bg"><div class="opt-bar-fill correct" id="correct-bar-${i}" style="width:0%"></div></div>
+        </div>
+        <div class="opt-row">
+          <div class="opt-row-head"><span class="label">오답</span><span id="wrong-pct-${i}">0%</span></div>
+          <div class="opt-bar-bg"><div class="opt-bar-fill" id="wrong-bar-${i}" style="width:0%"></div></div>
+        </div>`;
+    }
+
+    const pointsLabel = q.points % 1 === 0 ? q.points : q.points.toFixed(1);
+    card.innerHTML = `
+      <div class="chart-title">Q${i + 1} · ${pointsLabel}점</div>
+      <div class="chart-q">${q.text}</div>
+      <div class="chart-answer">정답: ${answerLabel}</div>
+      ${bodyHtml}
+      <div class="acc-summary">정답률 <span class="pct" id="acc-${i}">0%</span></div>
+    `;
+    grid.appendChild(card);
+  });
+}
+
+function updateData() {
+  fetch(WEB_APP_URL + "?t=" + Date.now(), { redirect: "follow" })
+    .then(res => {
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      return res.json();
+    })
+    .then(data => {
+      // 헤더: name, Q1_choice, Q1_score, Q1_correct, Q2_choice, ..., total, correct_count, updated_at
+      // (참가자 한 명당 한 행. Code.gs의 QUESTION_COUNT와 QUESTIONS.length가 반드시 같아야 함)
+      const rows = data.slice(1);
+      const scores = {}; // name -> { total, correctCount }
+      const qStats = QUESTIONS.map(q => q.type === "mc"
+        ? { optionCounts: new Array(q.options.length).fill(0), total: 0 }
+        : { correct: 0, wrong: 0, total: 0 });
+
+      rows.forEach(r => {
+        const name = r[0];
+        if (!name) return;
+
+        QUESTIONS.forEach((qDef, i) => {
+          const base = 1 + i * 3; // 0-indexed: choice, score, correct
+          const choice = r[base];
+          if (choice === "" || choice === undefined || choice === null) return; // 아직 이 문제를 안 푼 경우 통계 제외
+          const correctFlag = r[base + 2];
+          const isCorrect = correctFlag === 1 || correctFlag === "1";
+
+          const stat = qStats[i];
+          stat.total++;
+          if (qDef.type === "mc") {
+            const idx = qDef.options.indexOf(choice);
+            if (idx >= 0) stat.optionCounts[idx]++;
+          } else {
+            if (isCorrect) stat.correct++; else stat.wrong++;
+          }
+        });
+
+        const totalCol = 1 + QUESTIONS.length * 3; // 0-indexed position of "total"
+        scores[name] = {
+          total: Number(r[totalCol]) || 0,
+          correctCount: Number(r[totalCol + 1]) || 0
+        };
+      });
+
+      // 문제별 통계 렌더링
+      QUESTIONS.forEach((q, i) => {
+        const stat = qStats[i];
+        const total = stat.total;
+        if (q.type === "mc") {
+          const optsDiv = document.getElementById(`opts-${i}`);
+          optsDiv.innerHTML = q.options.map((opt, idx) => {
+            const cnt = stat.optionCounts[idx];
+            const pct = total > 0 ? Math.round(cnt / total * 100) : 0;
+            const isCorrectOpt = idx === q.correct;
+            return `<div class="opt-row">
+              <div class="opt-row-head"><span class="label${isCorrectOpt ? " correct" : ""}">${["①","②","③","④","⑤","⑥"][idx]} ${opt}</span><span>${cnt}명 (${pct}%)</span></div>
+              <div class="opt-bar-bg"><div class="opt-bar-fill${isCorrectOpt ? " correct" : ""}" style="width:${pct}%"></div></div>
+            </div>`;
+          }).join("");
+          const correctCnt = stat.optionCounts[q.correct];
+          const accPct = total > 0 ? Math.round(correctCnt / total * 100) : 0;
+          document.getElementById(`acc-${i}`).textContent = accPct + "%";
+        } else {
+          const correctPct = total > 0 ? Math.round(stat.correct / total * 100) : 0;
+          const wrongPct = total > 0 ? Math.round(stat.wrong / total * 100) : 0;
+          document.getElementById(`correct-bar-${i}`).style.width = correctPct + "%";
+          document.getElementById(`wrong-bar-${i}`).style.width = wrongPct + "%";
+          document.getElementById(`correct-pct-${i}`).textContent = `${stat.correct}명 (${correctPct}%)`;
+          document.getElementById(`wrong-pct-${i}`).textContent = `${stat.wrong}명 (${wrongPct}%)`;
+          document.getElementById(`acc-${i}`).textContent = correctPct + "%";
+        }
+      });
+
+      // ================================================================
+      // 조 편성용 점수 보정
+      // - 실제 Google Sheet의 점수(scores)는 절대 수정하지 않습니다.
+      // - 20명을 점수순으로 정렬한 뒤 4명씩 5개 조로 나눕니다.
+      // - 박윤진만 "표시/조 편성용 점수"를 최소한으로 보정하여
+      //   최준호와 같은 조가 되도록 합니다.
+      // - 나머지 사람들의 점수는 그대로입니다.
+      // ================================================================
+      function makeGroupEntries(rawEntries) {
+        const entries = rawEntries.map(([name, info]) => ({
+          name,
+          total: Number(info.total) || 0,
+          correctCount: Number(info.correctCount) || 0,
+          adjusted: false
+        }));
+
+        // 점수 -> 정답 수 -> 이름 순으로 고정 정렬.
+        const sortEntries = arr => arr.sort((a, b) =>
+          b.total - a.total ||
+          b.correctCount - a.correctCount ||
+          a.name.localeCompare(b.name, "ko")
+        );
+
+        sortEntries(entries);
+
+        // 참가자가 20명일 때 4명씩 5개 조.
+        // 현재 인원이 20명보다 적거나 많아도 같은 방식으로 안전하게 처리합니다.
+        const GROUP_SIZE = 4;
+
+        const park = entries.find(e => e.name === "박윤진");
+        const choi = entries.find(e => e.name === "최준호");
+
+        if (park && choi && entries.length >= 2) {
+          const originalParkScore = park.total;
+
+          // 박윤진을 제외한 사람들의 실제 점수/정렬은 그대로 둡니다.
+          const others = entries.filter(e => e.name !== "박윤진");
+          sortEntries(others);
+
+          const choiIndex = others.findIndex(e => e.name === "최준호");
+
+          if (choiIndex >= 0) {
+            const targetGroup = Math.floor(choiIndex / GROUP_SIZE);
+
+            // 박윤진이 최준호와 같은 조가 될 수 있는 "점수 구간"을 찾습니다.
+            // 점수 자체는 실제 퀴즈 점수 범위(0~TOTAL_POINTS) 안에서만 선택합니다.
+            const candidates = [];
+
+            for (let score = 0; score <= TOTAL_POINTS; score++) {
+              const candidate = {
+                name: "박윤진",
+                total: score,
+                correctCount: park.correctCount,
+                adjusted: score !== originalParkScore
+              };
+
+              const test = others.concat(candidate);
+              sortEntries(test);
+
+              const parkIndex = test.findIndex(e => e.name === "박윤진");
+              const testChoiIndex = test.findIndex(e => e.name === "최준호");
+
+              if (Math.floor(parkIndex / GROUP_SIZE) === targetGroup) {
+                candidates.push({
+                  score,
+                  diff: Math.abs(score - originalParkScore),
+                  parkIndex,
+                  choiIndex: testChoiIndex
+                });
+              }
+            }
+
+            if (candidates.length > 0) {
+              // 실제 점수에서 가장 적게 바뀌는 값을 우선.
+              // 동점이면 최준호보다 위에 위치하는 값을 우선하고,
+              // 그것도 같으면 점수가 높은 쪽을 선택합니다.
+              candidates.sort((a, b) =>
+                a.diff - b.diff ||
+                (a.parkIndex < a.choiIndex ? -1 : 1) -
+                (b.parkIndex < b.choiIndex ? -1 : 1) ||
+                b.score - a.score
+              );
+
+              const selected = candidates[0];
+              park.total = selected.score;
+              park.adjusted = selected.score !== originalParkScore;
+              park.originalTotal = originalParkScore;
+            }
+          }
+        }
+
+        sortEntries(entries);
+
+        return entries.map((e, idx) => ({
+          ...e,
+          rank: idx + 1,
+          group: Math.floor(idx / GROUP_SIZE) + 1
+        }));
+      }
+
+      // 순위 테이블
+      const rawEntries = Object.entries(scores);
+      const entries = makeGroupEntries(rawEntries);
+      const tbody = document.getElementById("score-tbody");
+
+      document.getElementById("player-count").textContent = entries.length;
+      document.getElementById("score-badge").textContent = entries.length + "명";
+
+      if (entries.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="no-data">아직 제출된 데이터가 없습니다</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = entries.map(entry => {
+        const rank = entry.rank;
+        const rankClass = rank <= 3 ? `rank-${rank}` : "rank-n";
+        const scoreLabel = entry.adjusted
+          ? `${entry.total} <span style="font-size:11px;color:#999;font-weight:500;">(실제 ${entry.originalTotal})</span>`
+          : `${entry.total}`;
+
+        return `<tr>
+          <td><span class="rank ${rankClass}">${rank}</span>${entry.name}</td>
+          <td>${entry.correctCount} / ${QUESTIONS.length}</td>
+          <td class="total-score">${scoreLabel}</td>
+          <td><strong>${entry.group}조</strong></td>
+        </tr>`;
+      }).join("");
+    })
+    .catch(err => {
+      console.error("데이터 로드 실패:", err);
+      document.getElementById("header-error").textContent = "데이터 로드 실패: " + err.message;
+    });
+}
+
+function resetData() {
+  fetch(WEB_APP_URL + "?action=reset", { method: "GET" })
+    .then(() => updateData())
+    .catch(() => alert("초기화 실패"));
+}
+
+generateQR();
+initCharts();
+updateData();
+setInterval(updateData, 3000);
+</script>
+</body>
+</html>
